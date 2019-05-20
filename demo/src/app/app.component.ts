@@ -31,7 +31,7 @@ export class AppComponent {
 
   get count() {
     // warning: do not use `state`, it's used here for demo purpose only
-    return this.loader['state'].requests || 0;
+    return this.loader['state$']['requests'] || 0;
   }
 
   startHttpClientRequest() {
