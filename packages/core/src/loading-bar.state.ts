@@ -1,64 +1,65 @@
 import { Subject, timer, of, Observable } from 'rxjs';
-import { map, switchMap, take, tap } from 'rxjs/operators';
+import { map, switchMap, take, tap, filter, pairwise } from 'rxjs/operators';
 
 export interface ILoadingBarState {
   action: 'start' | 'complete' | 'set' | 'stop' | 'increment';
   value: number;
+  source: string;
 }
 
-export class LoadingBarState extends Subject<ILoadingBarState> {
-  state = {
-    action: null,
-    value: undefined,
-  };
+export class LoadingBarState extends Subject<Partial<ILoadingBarState>> {
+  // state = {
+  //   action: null,
+  //   source: null,
+  //   value: undefined,
+  // };
 
   private requests = null;
-  next(state: Partial<ILoadingBarState>, emitEvent = true) {
-    switch (state.action) {
+
+  select(source?: string) {
+    return this.pipe(
+      filter(s => !source || s.source === source),
+      pairwise(),
+      map(([prev, next]) => this.getNextState(prev, next)),
+      switchMap((s) => this.timer$(s)),
+      map(s => s.value),
+    );
+  }
+
+  private getNextState(prev, next) {
+    switch (next.action) {
       case 'start':
-        if (this.state.value) {
-          state.value = this.state.value;
+        if (prev.value) {
+          next.value = prev.value;
         }
 
         this.requests = (this.requests || 0) + 1;
         break;
       case 'complete':
-        if (this.requests <= 0) {
-          return;
+        if (this.requests > 0) {
+          this.requests = (this.requests || 1) - 1;
         }
 
-        this.requests = (this.requests || 1) - 1;
         if (this.requests === 0) {
-          state.action = 'stop';
+          next.action = 'stop';
         }
         break;
       case 'stop':
         this.requests = 0;
         break;
       default:
-        if (state.action === 'increment') {
-          state.value = this.increment(state.value);
+        if (next.action === 'increment') {
+          next.value = this.increment(next.value);
         }
-        state.action = this.requests > 0 ? 'start' : 'set';
+        next.action = this.requests > 0 ? 'start' : 'set';
         break;
     }
 
-    const newState = {
-      ...this.state,
+    return {
+      ...prev,
       action: null,
-      ...state,
+      ...next,
     };
-
-    this.state = newState;
-    if (emitEvent) {
-      super.next(this.state);
-    }
-  }
-
-  select() {
-    return this.pipe(
-      switchMap((s) => this.timer$(s)),
-    );
   }
 
   private timer$ = (s: ILoadingBarState) => {
@@ -71,18 +72,17 @@ export class LoadingBarState extends Subject<ILoadingBarState> {
       );
     } else if (s.action === 'start') {
       state$ = timer(0, 250).pipe(
-        map(t => (t === 0 ? { ...s } : { ...s, value: this.increment() })),
+        map(t => (t === 0 ? { ...s } : { ...s, value: this.increment(s.value) })),
       );
     }
 
     return state$.pipe(
       map(next => <ILoadingBarState>({ ...next, action: 'set' })),
-      tap((next) => this.next(next, false)),
+      // tap((next) => this.next(next, false)),
     );
   }
 
-  private increment(rnd = 0) {
-    const stat = this.state.value;
+  private increment(stat, rnd = 0) {
     if (stat >= 99) {
       rnd = 0;
     }

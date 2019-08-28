@@ -1,10 +1,11 @@
-import { Component, Input, ViewEncapsulation } from '@angular/core';
+import { Component, Input, ViewEncapsulation, OnInit } from '@angular/core';
 import { LoadingBarService } from './loading-bar.service';
+import { map } from 'rxjs/operators';
 
 @Component({
   selector: 'ngx-loading-bar',
   template: `
-    <ng-container *ngIf="(value !== null ? value : loader.progress$|async) as progress">
+    <ng-container *ngIf="(value !== null ? value : progress$|async) as progress">
       <div id="loading-bar-spinner" *ngIf="includeSpinner" [style.color]="color">
         <div [style.width]="diameter" [style.height]="diameter" class="spinner-icon"></div>
       </div>
@@ -22,7 +23,8 @@ import { LoadingBarService } from './loading-bar.service';
     '[class.loading-bar-fixed]': 'fixed',
   }
 })
-export class LoadingBarComponent {
+export class LoadingBarComponent implements OnInit {
+  @Input() source;
   @Input() includeSpinner = true;
   @Input() includeBar = true;
   @Input() fixed = true;
@@ -31,5 +33,13 @@ export class LoadingBarComponent {
   @Input() diameter;
   @Input() value = null;
 
+  progress$ = this.loader.progress$;
+
   constructor(public loader: LoadingBarService) {}
+
+  ngOnInit() {
+    if (this.source) {
+      this.progress$ = (this.loader as any).state$.select(this.source);
+    }
+  }
 }

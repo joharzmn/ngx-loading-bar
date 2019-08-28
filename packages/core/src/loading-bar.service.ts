@@ -7,9 +7,7 @@ import { LoadingBarState } from './loading-bar.state';
 @Injectable({ providedIn: 'root' })
 export class LoadingBarService {
   private state$ = new LoadingBarState();
-  readonly progress$ = this.state$.select().pipe(
-    map(s => s.value),
-  );
+  readonly progress$ = this.state$.select();
 
   constructor(@Inject(PLATFORM_ID) private platformId: Object) {}
 
@@ -35,5 +33,12 @@ export class LoadingBarService {
 
   increment(value = 0) {
     this.state$.next({ action: 'increment', value });
+  }
+
+  connect(source: string) {
+    return {
+      start: () => this.state$.next({ action: 'start', source, value: 2 }),
+      complete: () => this.state$.next({ action: 'complete', source }),
+    };
   }
 }

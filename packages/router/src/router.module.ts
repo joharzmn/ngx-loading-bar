@@ -20,12 +20,13 @@ export class LoadingBarRouterModule {
         return;
       }
 
+      const action = loadingBar.connect('router');
       if (event instanceof NavigationStart) {
-        loadingBar.start();
+        action.start();
       }
 
       if ((event instanceof NavigationError || event instanceof NavigationEnd || event instanceof NavigationCancel)) {
-        loadingBar.complete();
+        action.complete();
       }
     });
   }
